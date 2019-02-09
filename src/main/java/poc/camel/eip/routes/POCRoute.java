@@ -13,11 +13,11 @@ public final class POCRoute extends RouteBuilder {
     public static final String ROUTE_NAME = "POC_ROUTE";
 
     /** The Constant ROUTE_FROM. */
-    public static final String ROUTE_FROM = "timer:"
-            + POCRoute.class.getSimpleName() + "?period=10s";
+    public static final String ROUTE_FROM = "timer:" + ROUTE_NAME
+            + "?period=10s";
 
     /** The Constant ROUTE_TO. */
-    public static final String ROUTE_TO = "log:" + POCRoute.class.getName();
+    public static final String ROUTE_TO = "log:" + ROUTE_NAME;
 
     @Override
     public void configure() throws Exception {

@@ -37,7 +37,7 @@ public class POCRouteTest {
     private ProducerTemplate producer;
 
     /** The Constant MOCK_TO. */
-    protected static final String MOCK_TO = "mock:POCRouteTest-to";
+    protected static final String MOCK_TO = "mock:" + POCRoute.ROUTE_TO;
 
     /** The Constant MOCK_FROM. */
     protected static final String MOCK_FROM = "direct:POCRouteTest-from";
