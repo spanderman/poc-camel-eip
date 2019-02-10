@@ -1,15 +1,14 @@
 package poc.camel.eip.routes.test;
 
-import java.util.Arrays;
-import java.util.List;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
+
+import java.util.Collections;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.camel.CamelContext;
-import org.apache.camel.EndpointInject;
-import org.apache.camel.ProducerTemplate;
-import org.apache.camel.builder.AdviceWithRouteBuilder;
-import org.apache.camel.component.mock.MockEndpoint;
+import org.apache.camel.builder.NotifyBuilder;
 import org.apache.camel.test.spring.CamelSpringBootRunner;
-import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,63 +23,68 @@ import poc.camel.eip.routes.POCRoute;
 @SpringBootTest
 public class POCRouteTest {
 
-    /** The to endpoint. */
-    @EndpointInject(uri = MOCK_TO)
-    private MockEndpoint toEndpoint;
-
     /** The camel context. */
     @Autowired
     private CamelContext camelContext;
 
-    /** The producer. */
-    @EndpointInject(uri = MOCK_FROM)
-    private ProducerTemplate producer;
-
-    /** The Constant MOCK_TO. */
-    protected static final String MOCK_TO = "mock:" + POCRoute.ROUTE_TO;
-
-    /** The Constant MOCK_FROM. */
-    protected static final String MOCK_FROM = "direct:POCRouteTest-from";
+    /** The Constant MESSAGE_COUNT. */
+    private static final int MESSAGE_COUNT = 2;
 
     /**
-     * Setup.
-     *
-     * @throws Exception the exception
-     */
-    @Before
-    public void setUp() throws Exception {
-
-        camelContext.getRouteDefinition(POCRoute.ROUTE_NAME).autoStartup(true)
-                .adviceWith(camelContext, new AdviceWithRouteBuilder() {
-
-                    @Override
-                    public void configure() throws Exception {
-
-                        replaceFromWith(MOCK_FROM);
-                        interceptSendToEndpoint(POCRoute.ROUTE_TO)
-                                .skipSendToOriginalEndpoint().to(MOCK_TO);
-                    }
-                });
-    }
-
-    /**
-     * Send message.
+     * Send messages.
      *
      * @throws Exception the exception
      */
     @Test
-    public void sendMessage() throws Exception {
+    public void sendMessages() throws Exception {
 
-        final List<String> messages = Arrays.asList("A message",
-                "Another message", "Yet another message");
+        Object[] bodies = Collections.nCopies(MESSAGE_COUNT, null).toArray();
 
-        toEndpoint.expectedMessageCount(messages.size());
-        toEndpoint.expectedBodiesReceived(messages);
+        NotifyBuilder notifyBuilder = new NotifyBuilder(camelContext)
+                .from(POCRoute.ROUTE_FROM).fromRoute(POCRoute.ROUTE_NAME)
+                .wereSentTo(POCRoute.ROUTE_TO).whenCompleted(bodies.length)
+                .and().wereSentTo(POCRoute.ROUTE_TO).whenBodiesDone(bodies)
+                .create();
 
-        messages.forEach(message -> {
-            producer.sendBody(message);
-        });
+        assertTrue(notifyBuilder.matches(
+                POCRoute.PERIOD_SECONDS * MESSAGE_COUNT, TimeUnit.SECONDS));
+    }
 
-        toEndpoint.assertIsSatisfied();
+    /**
+     * Send messages and assert wrong message count.
+     *
+     * @throws Exception the exception
+     */
+    @Test
+    public void sendMessagesAssertWrongMessageCount() throws Exception {
+
+        Object[] bodies = Collections.nCopies(MESSAGE_COUNT, null).toArray();
+
+        NotifyBuilder notifyBuilder = new NotifyBuilder(camelContext)
+                .from(POCRoute.ROUTE_FROM).fromRoute(POCRoute.ROUTE_NAME)
+                .wereSentTo(POCRoute.ROUTE_TO).whenCompleted(bodies.length * 2)
+                .create();
+
+        assertFalse(notifyBuilder.matches(
+                POCRoute.PERIOD_SECONDS * MESSAGE_COUNT, TimeUnit.SECONDS));
+    }
+
+    /**
+     * Send messages and assert wrong bodies received.
+     *
+     * @throws Exception the exception
+     */
+    @Test
+    public void sendMessagesAssertWrongBodiesReceived() throws Exception {
+
+        Object[] bodies = Collections.nCopies(MESSAGE_COUNT, "wrong body")
+                .toArray();
+
+        NotifyBuilder notifyBuilder = new NotifyBuilder(camelContext)
+                .from(POCRoute.ROUTE_FROM).fromRoute(POCRoute.ROUTE_NAME)
+                .wereSentTo(POCRoute.ROUTE_TO).whenBodiesDone(bodies).create();
+
+        assertFalse(notifyBuilder.matches(
+                POCRoute.PERIOD_SECONDS * MESSAGE_COUNT, TimeUnit.SECONDS));
     }
 }
